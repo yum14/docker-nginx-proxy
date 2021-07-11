@@ -1,21 +1,46 @@
 version: "3"
 services:
-  proxy:
+  nginx-proxy:
     build: .
-    container_name: proxy
+    container_name: nginx-proxy
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock:ro
-      - ./certs:/etc/nginx/certs:ro
+      - html:/usr/share/nginx/html
+      - vhost:/etc/nginx/vhost.d
+      - certs:/etc/nginx/certs:ro
+    restart: always
+    labels:
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    logging:
+      options:
+        max-size: 5m
+        max-file: "10"
+  letsencrypt-nginx:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt-nginx
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy # volume_fromを使わない時はコンテナを指定する必要がある
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - html:/usr/share/nginx/html
+      - vhost:/etc/nginx/vhost.d
+      - certs:/etc/nginx/certs:rw
     restart: always
     logging:
       options:
         max-size: 5m
         max-file: "10"
-
+    depends_on:
+      - nginx-proxy
 networks:
   default:
     external:
       name: shared
+volumes:
+  certs:
+  html:
+  vhost:
+
